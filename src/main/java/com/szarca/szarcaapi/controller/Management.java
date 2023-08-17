@@ -17,56 +17,59 @@ public class Management {
     private String typeField = "false";
     private final String root = "/management/param/";
 
+    public enum FunctionType {
+        ADD_USER,
+        ADD_SOURCE,
+        ADD_SECURITY_SOURCE,
+        ADD_FUNCTION,
+        REMOVE_USER,
+        REMOVE_SECURITY_SOURCE,
+        REMOVE_FUNCTION,
+        REMOVE_SOURCE,
+        INVALID_METHOD
+    }
+    final int LOGIN_INDEX = 1;
+    final int NAME_INDEX = 2;
+    final int HASH_INDEX = 3;
+    final int EMAIL_INDEX = 4;
+    final int SOURCES_INDEX = 5;
+    final int WHERE_LOGIN_INDEX = 6;
+
     /**
      * @apiNote função principal para instanciamento de ações CRUD
      * @param jsonString
      * @return
      */
+
     public JSONObject controller(String jsonString) {
 
         JSONObject json = new JSONObject(jsonString);
         String function = json.query("/management/function").toString();
+        FunctionType functionType = FunctionType.valueOf(function.toUpperCase());
 
-        if (function.equals("addUser")) {
+        return switch (functionType) {
+            case ADD_USER -> addUser(json);
+            case ADD_SOURCE -> addSource(json);
+            case ADD_SECURITY_SOURCE -> addSecuritySource(json);
+            case ADD_FUNCTION -> addFunction(json);
+            case REMOVE_USER -> removeUser(json);
+            case REMOVE_SECURITY_SOURCE -> removeSecuritySource(json);
+            case REMOVE_FUNCTION -> removeFunction(json);
+            case REMOVE_SOURCE -> removeSource(json);
+            case INVALID_METHOD -> handleInvalidMethod();
+        };
+    }
 
-            return addUser(json);
+    private JSONObject addSecuritySource(JSONObject json){
+        String user = json.query("/management/param/user").toString();
+        String source = json.query("/management/param/source").toString();
 
-        } else if (function.equals("addSource")) {
-
-            return addSource(json);
-
-        }  else if (function.equals("addSecuritySource")) {
-
-            String user = json.query("/management/param/user").toString();
-            String source = json.query("/management/param/source").toString();
-
-            return queryInsertSources(new Environment().databaseLocation(), user, source);
-
-        } else if (function.equals("addFunction")) {
-
-            return addFunction(json);
-
-        } else if (function.equals("removeUser")) {
-
-            return removeUser(json);
-
-        } else if (function.equals("removeSecuritySource")) {
-
-            return removeSecuritySource(json);
-
-        } else if (function.equals("removeFunction")) {
-
-            return removeFunction(json);
-
-        } else if (function.equals("removeSource")) {
-
-            return removeSource(json);
-
-        } else {
-            header.put("type", typeField);
-            header.put("message", "invalid method");
-            return header;
-        }
+        return queryInsertSources(new Environment().databaseLocation(), user, source);
+    }
+    private JSONObject handleInvalidMethod() {
+        header.put("type", typeField);
+        header.put("message", "invalid method");
+        return header;
     }
 
     private JSONObject removeFunction(JSONObject json){
@@ -163,12 +166,13 @@ public class Management {
 
             Connection conn = DriverManager.getConnection(new Environment().databaseLocation());
             PreparedStatement ps1 = conn.prepareStatement(sqlQuery);
-            ps1.setString(1, user);
-            ps1.setString(2, user);
-            ps1.setString(3, passwd);
-            ps1.setString(4, email);
-            ps1.setString(5, roles.toString());
-            ps1.setString(6, user);
+
+            ps1.setString(LOGIN_INDEX, user);
+            ps1.setString(NAME_INDEX, user);
+            ps1.setString(HASH_INDEX, passwd);
+            ps1.setString(EMAIL_INDEX, email);
+            ps1.setString(SOURCES_INDEX, roles.toString());
+            ps1.setString(WHERE_LOGIN_INDEX, user);
 
             /**
              * Inserção das permissões de acesso aos sources
@@ -213,10 +217,10 @@ public class Management {
 
             Connection conn2 = DriverManager.getConnection(url);
             PreparedStatement ps2 = conn2.prepareStatement(sqlQuerySources);
-            ps2.setString(1, user);
-            ps2.setString(2, role);
-            ps2.setString(3, user);
-            ps2.setString(4, role);
+            ps2.setString(LOGIN_INDEX, user);
+            ps2.setString(NAME_INDEX, role);
+            ps2.setString(HASH_INDEX, user);
+            ps2.setString(EMAIL_INDEX, role);
 
             int out = ps2.executeUpdate();
 
